@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Наклейки.ру</title>
+    <!-- ИСПРАВЛЕНО: Добавлен полный адрес https:// для загрузки библиотеки из интернета -->
+    <script src="cdn.jsdelivr.net"></script>
+    <style>
+        body { font-family: sans-serif; margin: 0; background: #f4f4f4; }
+        .rainbow { height: 5px; background: linear-gradient(90deg, red,orange,yellow,green,blue,indigo,violet); }
+        header { background: white; padding: 15px; text-align: center; border-bottom: 1px solid #ddd; }
+        nav button { background: none; border: none; font-weight: bold; cursor: pointer; margin: 0 10px; color: black; border-radius: 20px; padding: 5px 10px; }
+        .screen { display: none; padding: 20px; text-align: center; }
+        .active { display: block; }
+        .form-box { background: white; padding: 20px; border-radius: 20px; max-width: 350px; margin: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 25px; box-sizing: border-box; outline: none; }
+        .btn-black { background: black; color: white; border: none; padding: 14px; cursor: pointer; width: 100%; border-radius: 30px; font-weight: bold; }
+        .avatar-box { width: 80px; height: 80px; border-radius: 50%; border: 2px solid #000; margin: 10px auto; overflow: hidden; background: #eee; display: flex; align-items: center; justify-content: center; }
+        .avatar-box img { width: 100%; height: 100%; object-fit: cover; }
+        .order-card { background: white; padding: 20px; margin: 15px auto; max-width: 450px; text-align: left; border-radius: 20px; border: 1px solid #ddd; }
+        .chat { height: 120px; overflow-y: auto; background: #f9f9f9; border: 1px solid #eee; padding: 10px; margin: 10px 0; border-radius: 15px; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="rainbow"></div>
+    <header><h1>Наклейки.ру</h1><nav><button onclick="show('shop')">Магазин</button><button onclick="show('cart')">Корзина</button><button onclick="show('profile')">Профиль</button></nav></header>
+
+    <div id="shop" class="screen active"><h2>Магазин</h2><p>Пока тут пусто...</p></div>
+    <div id="cart" class="screen"><h3>В корзине пока пусто ☹️</h3><button class="btn-black" onclick="show('checkout')">Продолжить</button></div>
+
+    <div id="checkout" class="screen">
+        <div class="form-box">
+            <h3>Оформление заказа</h3>
+            <select id="school"><option>Первая школа город Звенигород</option></select>
+            <p>Ваш Email: <b id="display-email"></b></p>
+            <button class="btn-black" onclick="placeOrder()">Оформить заказ</button>
+        </div>
+    </div>
+
+    <div id="success" class="screen"><h1 style="color:green; font-size:60px;">✔️</h1><h2>Спасибо за заказ!</h2><button class="btn-black" onclick="show('orders')">Мои заказы</button></div>
+
+    <div id="profile" class="screen">
+        <div id="auth-ui" class="form-box">
+            <h2 id="auth-title">Вход</h2>
+            <div id="reg-ui" style="display:none">
+                <div class="avatar-box"><img id="pre-img" src=""></div>
+                <input type="file" id="f-ava" accept="image/*" onchange="previewAva()">
+                <input type="text" id="f-nick" placeholder="Никнейм">
+            </div>
+            <input type="email" id="f-email" placeholder="Email"><input type="password" id="f-pass" placeholder="Пароль">
+            <button class="btn-black" onclick="handleAuth()">Продолжить</button>
+            <p id="toggle-link">Нет аккаунта? <a href="#" onclick="setReg(true)">Регистрация</a></p>
+        </div>
+        <div id="user-ui" style="display:none">
+            <div class="avatar-box"><img id="u-ava" src=""></div>
+            <h2 id="u-nick"></h2><button class="btn-black" onclick="show('orders')">Мои заказы</button><br><br>
+            <button onclick="localStorage.clear(); location.reload()" style="color:red; background:none; border:none; cursor:pointer">Выйти</button>
+        </div>
+    </div>
+
+    <div id="orders" class="screen"><h2>Мои заказы</h2><div id="order-list"></div></div>
+
+    <script>
+        // Глобальные переменные
+        var user = JSON.parse(localStorage.getItem('u')) || null;
+        var isReg = false;
+        var sb = null;
+
+        // Инициализация базы данных после полной загрузки страницы
+        window.onload = function() {
+            if (typeof supabase !== 'undefined') {
+                sb = supabase.createClient('https://ccvffkurxnizisiwzcnk.supabase.co', 'sb_publishable_NHCbKOktibBY2pMhTeXSpw_yLBCcS8W');
+                console.log("База данных подключена успешно.");
+                if(user) renderProfile();
+            } else {
+                alert("Ошибка: Библиотека Supabase не скачалась. Проверьте интернет!");
+            }
+        };
+
+        function previewAva() {
+            var file = document.getElementById('f-ava').files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function(e) { document.getElementById('pre-img').src = e.target.result; }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function show(id) {
+            if(id === 'checkout' && !user) return show('profile');
+            var screens = document.querySelectorAll('.screen');
+            for(var i=0; i<screens.length; i++) screens[i].classList.remove('active');
+            document.getElementById(id).classList.add('active');
+            if(id === 'profile') renderProfile();
+            if(id === 'orders') loadOrders();
+            if(id === 'checkout' && user) document.getElementById('display-email').innerText = user.email;
+        }
+
+        function setReg(v) { 
+            isReg = v; 
+            document.getElementById('reg-ui').style.display = v ? 'block' : 'none'; 
+            document.getElementById('auth-title').innerText = v ? 'Регистрация' : 'Вход';
+        }
+
+        async function handleAuth() {
+            if(!sb) return;
+            var email = document.getElementById('f-email').value;
+            if(isReg) {
+                var nick = document.getElementById('f-nick').value;
+                var file = document.getElementById('f-ava').files[0];
+                var url = '';
+                if(file) {
+                    var name = Date.now() + '.png';
+                    await sb.storage.from('avatars').upload(name, file);
+                    url = sb.storage.from('avatars').getPublicUrl(name).data.publicUrl;
+                }
+                var res = await sb.from('profiles').insert([{nickname:nick, email:email, avatar_url:url}]).select().single();
+                if(res.data) { user = res.data; save(); } else { alert('Ошибка регистрации!'); }
+            } else {
+                var res2 = await sb.from('profiles').select('*').eq('email', email).single();
+                if(res2.data) { user = res2.data; save(); } else { alert('Аккаунт не найден!'); }
+            }
+        }
+
+        function save() { localStorage.setItem('u', JSON.stringify(user)); renderProfile(); }
+        
+        function renderProfile() {
+            if(user) {
+                document.getElementById('auth-ui').style.display='none';
+                document.getElementById('user-ui').style.display='block';
+                document.getElementById('u-nick').innerText = user.nickname;
+                document.getElementById('u-ava').src = user.avatar_url || '';
+            }
+        }
+
+        async function placeOrder() {
+            if(!sb || !user) return;
+            await sb.from('orders').insert([{user_email: user.email, total_price: 150}]);
+            show('success');
+        }
+
+        async function loadOrders() {
+            if(!sb || !user) return;
+            var res = await sb.from('orders').select('*').eq('user_email', user.email).order('id', {ascending:false});
+            var list = document.getElementById('order-list');
+            list.innerHTML = (res.data && res.data.length) ? '' : 'Заказов нет';
+            if(res.data) res.data.forEach(function(o) {
+                var active = o.status !== 'Доставлено' && o.status !== 'Отменён';
+                list.innerHTML += `<div class="order-card"><b>Заказ №${o.id}</b> [${o.status}]
+                    ${active ? `<button onclick="cancel(${o.id})" style="float:right;color:red;border:none;background:none;cursor:pointer">Отменить</button><div class="chat" id="ch-${o.id}"></div><input id="in-${o.id}"><button onclick="send(${o.id})">✉️</button>` : ''}</div>`;
+                if(active) loadMsgs(o.id);
+            });
+        }
+
+        async function cancel(id) { if(!sb) return; await sb.from('orders').update({status:'Отменён'}).eq('id',id); loadOrders(); }
+        
+        async function loadMsgs(id) {
+            var res = await sb.from('messages').select('*').eq('order_id', id);
+            var box = document.getElementById('ch-'+id);
+            if(box && res.data) box.innerHTML = res.data.map(function(m){ return '<div><b>'+m.sender+':</b> '+m.text+'</div>'}).join('');
+        }
+        
+        async function send(id) {
+            if(!sb) return;
+            var t = document.getElementById('in-'+id).value;
+            await sb.from('messages').insert([{order_id:id, sender:user.nickname, text:t}]);
+            document.getElementById('in-'+id).value = ''; loadMsgs(id);
+        }
+    </script>
+</body>
+</html>

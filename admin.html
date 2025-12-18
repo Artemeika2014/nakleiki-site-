@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Админка</title>
+    <script src="cdn.jsdelivr.net"></script>
+    <style>
+        body { font-family: sans-serif; background: #eee; margin: 0; }
+        .rainbow { height: 5px; background: linear-gradient(90deg, red,orange,yellow,green,blue,indigo,violet); }
+        .card { background: white; margin: 15px; padding: 20px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .btn { background: black; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 25px; font-weight: bold; }
+        .chat { height: 100px; overflow-y: auto; background: #f9f9f9; border: 1px solid #ddd; margin: 10px 0; padding: 10px; border-radius: 15px; }
+    </style>
+</head>
+<body>
+    <div class="rainbow"></div>
+    <div id="login" style="text-align:center; margin-top:80px;">
+        <h2>Вход MisterMeat</h2>
+        <input id="l" placeholder="Логин"><br><br><input type="password" id="p" placeholder="Пароль"><br><br>
+        <button class="btn" onclick="auth()">Войти</button>
+    </div>
+    <div id="panel" style="display:none; padding:20px"><h2>Все заказы</h2><div id="list"></div></div>
+    <script>
+        var sb = supabase.createClient('https://ccvffkurxnizisiwzcnk.supabase.co', 'sb_publishable_NHCbKOktibBY2pMhTeXSpw_yLBCcS8W');
+        function auth() {
+            if(document.getElementById('l').value==='MisterMeat' && document.getElementById('p').value==='123456789987654321666') {
+                document.getElementById('login').style.display='none'; document.getElementById('panel').style.display='block'; load();
+            } else { alert('ОШИБКА'); }
+        }
+        var states = ['Оформлен', 'В сборке', 'Собран', 'Передаётся в доставку', 'В пути', 'Доставлено'];
+        var labels = ['Начинаю сборку', 'Завершил сборку', 'Передаю в доставку', 'Уже везу', 'Выполнил заказ'];
+        async function load() {
+            var res = await sb.from('orders').select('*').order('id', {ascending:false});
+            var cont = document.getElementById('list'); cont.innerHTML = '';
+            if(res.data) res.data.forEach(function(o) {
+                var idx = states.indexOf(o.status);
+                var active = o.status !== 'Доставлено' && o.status !== 'Отменён';
+                cont.innerHTML += `<div class="card"><b>№${o.id} - ${o.status}</b> (${o.user_email})<br><br>
+                    ${idx < 5 && active ? `<button class="btn" onclick="upd(${o.id},'${states[idx+1]}')">${labels[idx]}</button>` : ''}
+                    ${active ? `<button onclick="upd(${o.id},'Отменён')" style="color:red;border:none;background:none;cursor:pointer">Отменить</button><div class="chat" id="ch-${o.id}"></div><input id="in-${o.id}"><button class="btn" onclick="send(${o.id})">ОК</button>` : ''}</div>`;
+                if(active) loadMsgs(o.id);
+            });
+        }
+        async function upd(id, st) { await sb.from('orders').update({status:st}).eq('id',id); load(); }
+        async function loadMsgs(id) {
+            var res = await sb.from('messages').select('*').eq('order_id', id);
+            var box = document.getElementById('ch-'+id);
+            if(box && res.data) box.innerHTML = res.data.map(function(m){return '<div>'+m.sender+': '+m.text+'</div>'}).join('');
+        }
+        async function send(id) {
+            var t = document.getElementById('in-'+id).value;
+            await sb.from('messages').insert([{order_id:id, sender:'Админ', text:t}]);
+            document.getElementById('in-'+id).value = ''; loadMsgs(id);
+        }
+    </script>
+</body>
+</html>
