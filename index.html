@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Наклейки.ру</title>
-    <!-- ИСПРАВЛЕННАЯ ССЫЛКА (Полный путь для GitHub) -->
+    <!-- ИСПРАВЛЕННАЯ ССЫЛКА 2025 -->
     <script src="cdn.jsdelivr.net"></script>
     <style>
         body { font-family: sans-serif; margin: 0; background: #f4f4f4; }
@@ -66,16 +66,18 @@
         var sb = null;
 
         window.onload = function() {
+            // Проверка, что библиотека загрузилась
             if (typeof supabase !== 'undefined') {
                 sb = supabase.createClient('https://ccvffkurxnizisiwzcnk.supabase.co', 'sb_publishable_NHCbKOktibBY2pMhTeXSpw_yLBCcS8W');
+                console.log("Supabase подключен успешно!");
                 if(user) renderProfile();
             } else {
-                alert("Библиотека не загружена. Проверьте интернет!");
+                alert("Ошибка 404: Библиотека Supabase не найдена. Проверьте ссылку!");
             }
         };
 
         function previewAva() {
-            var file = document.getElementById('f-ava').files;
+            var file = document.getElementById('f-ava').files[0];
             if (file) {
                 var reader = new FileReader();
                 reader.onload = function(e) { document.getElementById('pre-img').src = e.target.result; }
