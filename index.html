@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Наклейки.ру</title>
-    <!-- ИСПРАВЛЕНО: Добавлен полный адрес https:// для загрузки библиотеки из интернета -->
+    <!-- ИСПРАВЛЕННАЯ ССЫЛКА (Полный путь для GitHub) -->
     <script src="cdn.jsdelivr.net"></script>
     <style>
         body { font-family: sans-serif; margin: 0; background: #f4f4f4; }
@@ -61,24 +61,21 @@
     <div id="orders" class="screen"><h2>Мои заказы</h2><div id="order-list"></div></div>
 
     <script>
-        // Глобальные переменные
         var user = JSON.parse(localStorage.getItem('u')) || null;
         var isReg = false;
         var sb = null;
 
-        // Инициализация базы данных после полной загрузки страницы
         window.onload = function() {
             if (typeof supabase !== 'undefined') {
                 sb = supabase.createClient('https://ccvffkurxnizisiwzcnk.supabase.co', 'sb_publishable_NHCbKOktibBY2pMhTeXSpw_yLBCcS8W');
-                console.log("База данных подключена успешно.");
                 if(user) renderProfile();
             } else {
-                alert("Ошибка: Библиотека Supabase не скачалась. Проверьте интернет!");
+                alert("Библиотека не загружена. Проверьте интернет!");
             }
         };
 
         function previewAva() {
-            var file = document.getElementById('f-ava').files[0];
+            var file = document.getElementById('f-ava').files;
             if (file) {
                 var reader = new FileReader();
                 reader.onload = function(e) { document.getElementById('pre-img').src = e.target.result; }
@@ -152,16 +149,13 @@
             });
         }
 
-        async function cancel(id) { if(!sb) return; await sb.from('orders').update({status:'Отменён'}).eq('id',id); loadOrders(); }
-        
+        async function cancel(id) { await sb.from('orders').update({status:'Отменён'}).eq('id',id); loadOrders(); }
         async function loadMsgs(id) {
             var res = await sb.from('messages').select('*').eq('order_id', id);
             var box = document.getElementById('ch-'+id);
             if(box && res.data) box.innerHTML = res.data.map(function(m){ return '<div><b>'+m.sender+':</b> '+m.text+'</div>'}).join('');
         }
-        
         async function send(id) {
-            if(!sb) return;
             var t = document.getElementById('in-'+id).value;
             await sb.from('messages').insert([{order_id:id, sender:user.nickname, text:t}]);
             document.getElementById('in-'+id).value = ''; loadMsgs(id);

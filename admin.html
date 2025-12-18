@@ -2,26 +2,33 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Админка</title>
+    <title>Админка - Наклейки.ру</title>
     <script src="cdn.jsdelivr.net"></script>
     <style>
         body { font-family: sans-serif; background: #eee; margin: 0; }
         .rainbow { height: 5px; background: linear-gradient(90deg, red,orange,yellow,green,blue,indigo,violet); }
         .card { background: white; margin: 15px; padding: 20px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         .btn { background: black; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 25px; font-weight: bold; }
+        input { padding: 10px; border-radius: 20px; border: 1px solid #ddd; outline: none; }
         .chat { height: 100px; overflow-y: auto; background: #f9f9f9; border: 1px solid #ddd; margin: 10px 0; padding: 10px; border-radius: 15px; }
     </style>
 </head>
 <body>
     <div class="rainbow"></div>
     <div id="login" style="text-align:center; margin-top:80px;">
-        <h2>Вход MisterMeat</h2>
-        <input id="l" placeholder="Логин"><br><br><input type="password" id="p" placeholder="Пароль"><br><br>
-        <button class="btn" onclick="auth()">Войти</button>
+        <div style="background:white; display:inline-block; padding:30px; border-radius:20px;">
+            <h2>Вход MisterMeat</h2>
+            <input id="l" placeholder="Логин"><br><br>
+            <input type="password" id="p" placeholder="Пароль"><br><br>
+            <button class="btn" onclick="auth()" style="width:100%">Войти</button>
+        </div>
     </div>
-    <div id="panel" style="display:none; padding:20px"><h2>Все заказы</h2><div id="list"></div></div>
+    <div id="panel" style="display:none; padding:20px"><h2>Заказы</h2><div id="list"></div></div>
     <script>
-        var sb = supabase.createClient('https://ccvffkurxnizisiwzcnk.supabase.co', 'sb_publishable_NHCbKOktibBY2pMhTeXSpw_yLBCcS8W');
+        var sb;
+        window.onload = function() {
+            sb = supabase.createClient('https://ccvffkurxnizisiwzcnk.supabase.co', 'sb_publishable_NHCbKOktibBY2pMhTeXSpw_yLBCcS8W');
+        };
         function auth() {
             if(document.getElementById('l').value==='MisterMeat' && document.getElementById('p').value==='123456789987654321666') {
                 document.getElementById('login').style.display='none'; document.getElementById('panel').style.display='block'; load();
@@ -37,7 +44,7 @@
                 var active = o.status !== 'Доставлено' && o.status !== 'Отменён';
                 cont.innerHTML += `<div class="card"><b>№${o.id} - ${o.status}</b> (${o.user_email})<br><br>
                     ${idx < 5 && active ? `<button class="btn" onclick="upd(${o.id},'${states[idx+1]}')">${labels[idx]}</button>` : ''}
-                    ${active ? `<button onclick="upd(${o.id},'Отменён')" style="color:red;border:none;background:none;cursor:pointer">Отменить</button><div class="chat" id="ch-${o.id}"></div><input id="in-${o.id}"><button class="btn" onclick="send(${o.id})">ОК</button>` : ''}</div>`;
+                    ${active ? `<button onclick="upd(${o.id},'Отменён')" style="color:red;border:none;background:none;cursor:pointer;margin-left:10px">Отменить</button><div class="chat" id="ch-${o.id}"></div><input id="in-${o.id}"><button class="btn" onclick="send(${o.id})">ОК</button>` : ''}</div>`;
                 if(active) loadMsgs(o.id);
             });
         }
