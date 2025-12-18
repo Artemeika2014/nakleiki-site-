@@ -3,61 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <title>Админка - Наклейки.ру</title>
+    <!-- ИСПРАВЛЕННАЯ ССЫЛКА 2025 -->
     <script src="cdn.jsdelivr.net"></script>
     <style>
         body { font-family: sans-serif; background: #eee; margin: 0; }
         .rainbow { height: 5px; background: linear-gradient(90deg, red,orange,yellow,green,blue,indigo,violet); }
-        .card { background: white; margin: 15px; padding: 20px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .btn { background: black; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 25px; font-weight: bold; }
-        input { padding: 10px; border-radius: 20px; border: 1px solid #ddd; outline: none; }
-        .chat { height: 100px; overflow-y: auto; background: #f9f9f9; border: 1px solid #ddd; margin: 10px 0; padding: 10px; border-radius: 15px; }
+        header { background: white; padding: 20px; text-align: center; border-bottom: 1px solid #ddd; }
+        .card { background: white; margin: 15px; padding: 25px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        input { padding: 10px; border-radius: 20px; border: 1px solid #ddd; outline: none; margin-right: 5px; }
+        /* ЗАКРУГЛЕННЫЕ КНОПКИ */
+        .btn { background: black; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 25px; font-weight: bold; transition: 0.3s; }
+        .btn:hover { opacity: 0.8; }
+        .chat { height: 120px; overflow-y: auto; background: #f9f9f9; border: 1px solid #eee; margin: 15px 0; padding: 10px; border-radius: 15px; font-size: 13px; }
     </style>
 </head>
 <body>
     <div class="rainbow"></div>
+    
+    <!-- ЭКРАН ВХОДА -->
     <div id="login" style="text-align:center; margin-top:80px;">
-        <div style="background:white; display:inline-block; padding:30px; border-radius:20px;">
+        <div style="background:white; display:inline-block; padding:30px; border-radius:20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
             <h2>Вход MisterMeat</h2>
             <input id="l" placeholder="Логин"><br><br>
             <input type="password" id="p" placeholder="Пароль"><br><br>
             <button class="btn" onclick="auth()" style="width:100%">Войти</button>
         </div>
     </div>
-    <div id="panel" style="display:none; padding:20px"><h2>Заказы</h2><div id="list"></div></div>
+
+    <!-- ПАНЕЛЬ УПРАВЛЕНИЯ -->
+    <div id="panel" style="display:none; padding:20px">
+        <h2 style="text-align:center">Управление заказами</h2>
+        <div id="list" style="max-width:800px; margin:auto"></div>
+    </div>
+
     <script>
-        var sb;
+        var sb = null;
+
+        // Инициализация при загрузке страницы
         window.onload = function() {
-            sb = supabase.createClient('https://ccvffkurxnizisiwzcnk.supabase.co', 'sb_publishable_NHCbKOktibBY2pMhTeXSpw_yLBCcS8W');
+            if (typeof supabase !== 'undefined') {
+                sb = supabase.createClient('https://ccvffkurxnizisiwzcnk.supabase.co', 'sb_publishable_NHCbKOktibBY2pMhTeXSpw_yLBCcS8W');
+                console.log("Админка: Supabase подключен!");
+            } else {
+                alert("Ошибка: Библиотека Supabase не загружена в админке!");
+            }
         };
+
         function auth() {
-            if(document.getElementById('l').value==='MisterMeat' && document.getElementById('p').value==='123456789987654321666') {
-                document.getElementById('login').style.display='none'; document.getElementById('panel').style.display='block'; load();
-            } else { alert('ОШИБКА'); }
+            var loginVal = document.getElementById('l').value;
+            var passVal = document.getElementById('p').value;
+            
+            if(loginVal === 'MisterMeat' && passVal === '123456789987654321666') {
+                document.getElementById('login').style.display = 'none';
+                document.getElementById('panel').style.display = 'block';
+                loadAllOrders();
+            } else { 
+                alert('НЕВЕРНЫЙ ЛОГИН ИЛИ ПАРОЛЬ'); 
+            }
         }
+
         var states = ['Оформлен', 'В сборке', 'Собран', 'Передаётся в доставку', 'В пути', 'Доставлено'];
         var labels = ['Начинаю сборку', 'Завершил сборку', 'Передаю в доставку', 'Уже везу', 'Выполнил заказ'];
-        async function load() {
+
+        async function loadAllOrders() {
+            if(!sb) return;
             var res = await sb.from('orders').select('*').order('id', {ascending:false});
-            var cont = document.getElementById('list'); cont.innerHTML = '';
-            if(res.data) res.data.forEach(function(o) {
-                var idx = states.indexOf(o.status);
-                var active = o.status !== 'Доставлено' && o.status !== 'Отменён';
-                cont.innerHTML += `<div class="card"><b>№${o.id} - ${o.status}</b> (${o.user_email})<br><br>
-                    ${idx < 5 && active ? `<button class="btn" onclick="upd(${o.id},'${states[idx+1]}')">${labels[idx]}</button>` : ''}
-                    ${active ? `<button onclick="upd(${o.id},'Отменён')" style="color:red;border:none;background:none;cursor:pointer;margin-left:10px">Отменить</button><div class="chat" id="ch-${o.id}"></div><input id="in-${o.id}"><button class="btn" onclick="send(${o.id})">ОК</button>` : ''}</div>`;
-                if(active) loadMsgs(o.id);
-            });
+            var cont = document.getElementById('list'); 
+            cont.innerHTML = '';
+
+            if(res.data) {
+                res.data.forEach(function(o) {
+                    var idx = states.indexOf(o.status);
+                    var active = o.status !== 'Доставлено' && o.status !== 'Отменён';
+                    
+                    cont.innerHTML += `
+                        <div class="card">
+                            <span style="float:right; color:#888">Заказ №${o.id}</span>
+                            <b>Клиент: ${o.user_email}</b><br>
+                            Статус: <span style="color:blue">${o.status}</span><br><br>
+                            
+                            ${idx < 5 && active ? `<button class="btn" onclick="updStatus(${o.id},'${states[idx+1]}')">${labels[idx]}</button>` : ''}
+                            
+                            ${active ? `<button onclick="updStatus(${o.id},'Отменён')" style="color:red; background:none; border:none; cursor:pointer; margin-left:15px; font-weight:bold;">Отменить</button>` : ''}
+                            
+                            <hr style="opacity:0.1; margin: 15px 0;">
+                            
+                            ${active ? `
+                                <div class="chat" id="ch-${o.id}">Загрузка переписки...</div>
+                                <input id="in-${o.id}" placeholder="Ваш ответ..."><button class="btn" onclick="sendMsg(${o.id})">Отправить</button>
+                            ` : '<i>Чат закрыт (Заказ завершен)</i>'}
+                        </div>`;
+                    if(active) loadMessages(o.id);
+                });
+            }
         }
-        async function upd(id, st) { await sb.from('orders').update({status:st}).eq('id',id); load(); }
-        async function loadMsgs(id) {
-            var res = await sb.from('messages').select('*').eq('order_id', id);
-            var box = document.getElementById('ch-'+id);
-            if(box && res.data) box.innerHTML = res.data.map(function(m){return '<div>'+m.sender+': '+m.text+'</div>'}).join('');
+
+        async function updStatus(id, newStatus) {
+            await sb.from('orders').update({status: newStatus}).eq('id', id);
+            loadAllOrders();
         }
-        async function send(id) {
-            var t = document.getElementById('in-'+id).value;
-            await sb.from('messages').insert([{order_id:id, sender:'Админ', text:t}]);
-            document.getElementById('in-'+id).value = ''; loadMsgs(id);
+
+        async function loadMessages(orderId) {
+            var res = await sb.from('messages').select('*').eq('order_id', orderId);
+            var box = document.getElementById('ch-' + orderId);
+            if(box && res.data) {
+                box.innerHTML = res.data.map(function(m) {
+                    return `<div><b>${m.sender}:</b> ${m.text}</div>`;
+                }).join('');
+            }
+        }
+
+        async function sendMsg(orderId) {
+            var textVal = document.getElementById('in-' + orderId).value;
+            if(!textVal) return;
+            
+            await sb.from('messages').insert([{
+                order_id: orderId, 
+                sender: 'Админ', 
+                text: textVal
+            }]);
+            
+            document.getElementById('in-' + orderId).value = ''; 
+            loadMessages(orderId);
         }
     </script>
 </body>
